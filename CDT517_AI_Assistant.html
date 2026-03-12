@@ -346,6 +346,46 @@ CDT517: Establish Business Mindset for Technology Professionals
             }
         }
         
+        // Conversation history for memory
+        let conversationHistory = [];
+        
+        function saveConversation() {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messages = [];
+            messagesDiv.querySelectorAll('.message').forEach(msg => {
+                if (!msg.classList.contains('system')) {
+                    messages.push({
+                        type: msg.classList.contains('user') ? 'user' : 'ai',
+                        content: msg.innerHTML
+                    });
+                }
+            });
+            localStorage.setItem('cdt517_conversation', JSON.stringify(messages));
+        }
+        
+        function loadConversation() {
+            const saved = localStorage.getItem('cdt517_conversation');
+            if (saved) {
+                try {
+                    const messages = JSON.parse(saved);
+                    const messagesDiv = document.getElementById('chatMessages');
+                    messagesDiv.innerHTML = '';
+                    messages.forEach(msg => {
+                        const div = document.createElement('div');
+                        div.className = 'message ' + msg.type;
+                        div.innerHTML = msg.content;
+                        messagesDiv.appendChild(div);
+                    });
+                    if (messages.length === 0) {
+                        // Add welcome message
+                        messagesDiv.innerHTML = '<div class="message system">📚 我已学习 CDT517 创业思维课程全部内容<br>有什么可以帮你的？</div>';
+                    }
+                } catch (e) {
+                    console.error('Failed to load conversation:', e);
+                }
+            }
+        }
+        
         let uploadedImages = [];
         
         function handleImageUpload(event) {
@@ -378,6 +418,7 @@ CDT517: Establish Business Mindset for Technology Professionals
                 userMsg += '<br><br>' + uploadedImages.map(img => `<img src="${img}" style="max-width:150px;border-radius:4px;">`).join('');
             }
             addMessage(userMsg, 'user');
+            saveConversation();
             input.value = '';
             
             // Build full context with image descriptions
@@ -464,6 +505,9 @@ CDT517: Establish Business Mindset for Technology Professionals
                 if (!reply.trim()) {
                     addMessage('❌ 无响应，请重试', 'ai');
                 }
+                
+                // Save conversation
+                saveConversation();
                     // Convert escape characters to real formatting
                     const formattedReply = reply
                         .replace(/\n/g, '<br>')
@@ -501,6 +545,7 @@ CDT517: Establish Business Mindset for Technology Professionals
                     有什么可以帮你的？
                 </div>
             `;
+            localStorage.removeItem('cdt517_conversation');
         }
         
         function toggleKB() {
