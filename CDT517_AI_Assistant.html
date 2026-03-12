@@ -224,6 +224,8 @@
         </div>
         
         <div class="chat-input-area">
+            <label for="imageUpload" style="cursor:pointer;font-size:20px;">📷</label>
+            <input type="file" id="imageUpload" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
             <input type="text" id="userInput" placeholder="输入你的问题或任务..." onkeypress="handleKeyPress(event)">
             <button onclick="sendMessage()" id="sendBtn">发送</button>
         </div>
@@ -344,10 +346,28 @@ CDT517: Establish Business Mindset for Technology Professionals
             }
         }
         
+        let uploadedImages = [];
+        
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImages.push({
+                    type: 'image_url',
+                    image_url: { url: e.target.result }
+                });
+                addMessage(`<img src="${e.target.result}" style="max-width:200px;max-height:200px;border-radius:8px;">`, 'user');
+                document.getElementById('imageUpload').value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+        
         async function sendMessage() {
             const input = document.getElementById('userInput');
             const message = input.value.trim();
-            if (!message) return;
+            if (!message && uploadedImages.length === 0) return;
             
             // Show user message
             addMessage(message, 'user');
@@ -369,7 +389,13 @@ CDT517: Establish Business Mindset for Technology Professionals
                         model: 'deepseek-chat',
                         messages: [
                             { role: 'system', content: KNOWLEDGE_BASE },
-                            { role: 'user', content: message }
+                            { 
+                                role: 'user', 
+                                content: [
+                                    { type: 'text', text: message },
+                                    ...uploadedImages
+                                ]
+                            }
                         ],
                         temperature: 0.7,
                         max_tokens: 2000
@@ -386,6 +412,7 @@ CDT517: Establish Business Mindset for Technology Professionals
                 } else {
                     const reply = data.choices[0].message.content;
                     addMessage(reply, 'ai');
+                    uploadedImages = [];
                 }
             } catch (error) {
                 loadingDiv.remove();
