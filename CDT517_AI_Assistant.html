@@ -310,10 +310,11 @@ CDT517: Establish Business Mindset for Technology Professionals
 请用中文回答，结合课程知识。如果问题与课程无关，请礼貌地引导回课程相关话题。
 `;
         
-        let apiKey = localStorage.getItem('deepseek_api_key') || '';
+        const apiKey = "sk-9503dba8664949ab8fad5b230cb9417b";
         
-        // Check if API key exists
+        // Auto-show chat since we have API key
         if (apiKey) {
+            document.getElementById('apiSetup').style.display = 'none';
             document.getElementById('apiSetup').style.display = 'none';
             document.getElementById('chatContainer').style.display = 'block';
             document.getElementById('kbSection').style.display = 'block';
