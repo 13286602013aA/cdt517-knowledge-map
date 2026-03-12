@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>CDT517 AI 助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* API Key Setup */
+        .api-setup {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        .api-setup input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .api-setup button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        /* Chat Container */
+        .chat-container {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #e94560, #0f3460);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .message.user {
+            background: #0f3460;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.ai {
+            background: white;
+            color: #333;
+            border-left: 4px solid #e94560;
+        }
+        
+        .message.system {
+            background: #fff3cd;
+            color: #856404;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+        }
+        
+        .chat-input-area button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        
+        .chat-input-area button:disabled {
+            background: #ccc;
+        }
+        
+        /* Knowledge Base Reference */
+        .kb-section {
+            display: none;
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+        
+        .kb-toggle {
+            background: #533483;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        
+        .kb-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .kb-module {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .kb-module h3 {
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .kb-module ul {
+            list-style: none;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .kb-module li {
+            padding: 3px 0;
+        }
+        
+        .kb-module li:before {
+            content: "• ";
+            color: #4CAF50;
+        }
+        
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- API Setup -->
+    <div class="api-setup" id="apiSetup">
+        <h2>🔑 设置 DeepSeek API Key</h2>
+        <p style="color: #666; font-size: 14px; margin: 10px 0;">
+            请输入你的 DeepSeek API Key（仅本地使用，不会保存到服务器）
+        </p>
+        <input type="password" id="apiKey" placeholder="sk-..." />
+        <button onclick="saveApiKey()">保存并开始对话</button>
+        <p style="font-size: 12px; color: #999; margin-top: 10px;">
+            没有 API Key？<a href="https://platform.deepseek.com" target="_blank">去申请</a>
+        </p>
+    </div>
+    
+    <!-- Chat Interface -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            <div>
+                <h2>🤖 CDT517 AI 助手</h2>
+                <small>基于课程知识回答</small>
+            </div>
+            <button onclick="clearChat()" style="background: transparent; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">清空对话</button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message system">
+                📚 我已学习 CDT517 创业思维课程全部内容，包括：<br>
+                • Lecture 1-2: 创业思维、商业模式画布<br>
+                • Lecture 3-4: 机会识别、市场分析<br>
+                • Lecture 5-6: 客户发现与验证、精益创业<br><br>
+                有什么可以帮你的？
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <input type="text" id="userInput" placeholder="输入你的问题或任务..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendBtn">发送</button>
+        </div>
+    </div>
+    
+    <!-- Knowledge Base -->
+    <div class="kb-section" id="kbSection">
+        <button class="kb-toggle" onclick="toggleKB()">📚 显示/隐藏课程知识体系</button>
+        <div class="kb-content" id="kbContent">
+            <div class="kb-module">
+                <h3>📘 Lecture 1-2: 创业思维</h3>
+                <ul>
+                    <li>Entrepreneurial Mindset</li>
+                    <li>STEM vs Business</li>
+                    <li>Business Model Canvas</li>
+                    <li>Value Proposition</li>
+                    <li>Customer Segments</li>
+                </ul>
+            </div>
+            <div class="kb-module">
+                <h3>📙 Lecture 3-4: 机会识别</h3>
+                <ul>
+                    <li>Opportunity Recognition</li>
+                    <li>Opportunity Evaluation</li>
+                    <li>SWOT Analysis</li>
+                    <li>TAM/SAM/SOM</li>
+                    <li>Competitive Advantage</li>
+                </ul>
+            </div>
+            <div class="kb-module">
+                <h3>📗 Lecture 5-6: 客户验证</h3>
+                <ul>
+                    <li>Customer Discovery</li>
+                    <li>Customer Validation</li>
+                    <li>Lean Startup / MVP</li>
+                    <li>Pivot or Persevere</li>
+                    <li>Iterative Learning</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Course Knowledge Base
+        const KNOWLEDGE_BASE = `
+你是一位 CDT517（创业思维课程）的 AI 助手。请根据以下课程知识回答用户问题：
+
+【课程概述】
+CDT517: Establish Business Mindset for Technology Professionals
+授课教师: Dr. WEI Chaochao
+
+【Module 1: 创业思维 (Lecture 1-2)】
+- Entrepreneurial Mindset: 创业者心态，风险vs机会，创新思维
+- STEM vs Business: 技术与商业思维差异
+- Business Model Canvas: 商业模式画布9个模块
+  - 客户细分、价值主张、渠道、客户关系、收入来源
+  - 核心资源、关键活动、关键合作、成本结构
+- Value Proposition: 价值主张设计
+- Innovation Types: 渐进式 vs 颠覆式创新
+
+【Module 2: 机会识别 (Lecture 3-4)】
+- Opportunity Recognition: 识别创业机会
+- Opportunity Evaluation: 机会评估
+- Market Analysis: TAM/SAM/SOM 市场规模分析
+- SWOT Analysis: 优势/劣势/机会/威胁
+- Competitive Advantage: 竞争优势
+- Feasibility Study: 可行性研究
+
+【Module 3: 客户验证 (Lecture 5-6)】
+- Customer Discovery: 客户发现（验证问题存在）
+- Customer Validation: 客户验证（验证解决方案）
+- Customer Development: 客户开发流程
+- Lean Startup: 精益创业 - Build-Measure-Learn
+- MVP: 最小可行产品
+- Pivot or Persevere: 转型或坚持决策
+- Iterative Learning: 迭代学习
+
+【核心框架】
+- 从问题出发 → 识别痛点 → 验证问题存在
+- 从机会出发 → 市场分析 → 评估可行性
+- 从客户出发 → 持续验证 → 迭代优化
+- 验证学习 → 创新核算 → 同期群分析
+
+请用中文回答，结合课程知识。如果问题与课程无关，请礼貌地引导回课程相关话题。
+`;
+        
+        let apiKey = localStorage.getItem('deepseek_api_key') || '';
+        
+        // Check if API key exists
+        if (apiKey) {
+            document.getElementById('apiSetup').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'block';
+            document.getElementById('kbSection').style.display = 'block';
+        }
+        
+        function saveApiKey() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) {
+                alert('请输入 API Key');
+                return;
+            }
+            if (!key.startsWith('sk-')) {
+                alert('API Key 格式错误，应该以 sk- 开头');
+                return;
+            }
+            localStorage.setItem('deepseek_api_key', key);
+            apiKey = key;
+            document.getElementById('apiSetup').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'block';
+            document.getElementById('kbSection').style.display = 'block';
+        }
+        
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Show user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Show loading
+            const loadingDiv = addMessage('<span class="loading"></span> 思考中...', 'ai');
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'system', content: KNOWLEDGE_BASE },
+                            { role: 'user', content: message }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remove loading
+                loadingDiv.remove();
+                
+                if (data.error) {
+                    addMessage('❌ 错误: ' + data.error.message, 'ai');
+                } else {
+                    const reply = data.choices[0].message.content;
+                    addMessage(reply, 'ai');
+                }
+            } catch (error) {
+                loadingDiv.remove();
+                addMessage('❌ 请求失败: ' + error.message, 'ai');
+            }
+            
+            sendBtn.disabled = false;
+            input.focus();
+        }
+        
+        function addMessage(content, type) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = content;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return div;
+        }
+        
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="message system">
+                    📚 我已学习 CDT517 创业思维课程全部内容<br>
+                    有什么可以帮你的？
+                </div>
+            `;
+        }
+        
+        function toggleKB() {
+            const content = document.getElementById('kbContent');
+            content.style.display = content.style.display === 'none' ? 'grid' : 'none';
+        }
+    </script>
+</body>
+</html>
