@@ -354,11 +354,8 @@ CDT517: Establish Business Mindset for Technology Professionals
             
             const reader = new FileReader();
             reader.onload = function(e) {
-                uploadedImages.push({
-                    type: 'image_url',
-                    image_url: { url: e.target.result }
-                });
-                addMessage(`<img src="${e.target.result}" style="max-width:200px;max-height:200px;border-radius:8px;">`, 'user');
+                uploadedImages.push(e.target.result);
+                addMessage(`<img src="${e.target.result}" style="max-width:200px;max-height:200px;border-radius:8px;"><br><em style="font-size:12px;color:#666;">(图片已上传，请描述你想问的内容)</em>`, 'user');
                 document.getElementById('imageUpload').value = '';
             };
             reader.readAsDataURL(file);
@@ -366,12 +363,28 @@ CDT517: Establish Business Mindset for Technology Professionals
         
         async function sendMessage() {
             const input = document.getElementById('userInput');
-            const message = input.value.trim();
-            if (!message && uploadedImages.length === 0) return;
+            let message = input.value.trim();
             
-            // Show user message
-            addMessage(message, 'user');
+            // If there's an image but no text, prompt user
+            if (uploadedImages.length > 0 && !message) {
+                message = "[用户上传了图片，请根据图片回答问题]";
+            }
+            
+            if (!message) return;
+            
+            // Show user message (include images)
+            let userMsg = message;
+            if (uploadedImages.length > 0) {
+                userMsg += '<br><br>' + uploadedImages.map(img => `<img src="${img}" style="max-width:150px;border-radius:4px;">`).join('');
+            }
+            addMessage(userMsg, 'user');
             input.value = '';
+            
+            // Build full context with image descriptions
+            let fullMessage = message;
+            if (uploadedImages.length > 0) {
+                fullMessage += "\n\n[注意：用户上传了图片。请基于图片内容结合课程知识回答。]";
+            }
             
             // Show loading
             const loadingDiv = addMessage('<span class="loading"></span> 思考中...', 'ai');
@@ -389,13 +402,7 @@ CDT517: Establish Business Mindset for Technology Professionals
                         model: 'deepseek-chat',
                         messages: [
                             { role: 'system', content: KNOWLEDGE_BASE },
-                            { 
-                                role: 'user', 
-                                content: [
-                                    { type: 'text', text: message },
-                                    ...uploadedImages
-                                ]
-                            }
+                            { role: 'user', content: fullMessage }
                         ],
                         temperature: 0.7,
                         max_tokens: 2000
